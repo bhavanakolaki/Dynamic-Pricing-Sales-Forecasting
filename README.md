@@ -36,7 +36,10 @@ pip install -r requirements.txt
 Run the application:
 python app.py
 
+<<<<<<< HEAD
 Open browser:
+=======
+>>>>>>> 3f2fcb7 (https://dynamic-pricing-sales-forecasting.onrender.com)
 ## Live Demo
 
 https://dynamic-pricing-sales-forecasting.onrender.com/
