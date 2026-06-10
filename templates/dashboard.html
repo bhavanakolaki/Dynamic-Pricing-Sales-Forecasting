@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — PricingAI</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#f1f5f9;min-height:100vh;}
+  nav{background:#1e293b;border-bottom:1px solid #334155;padding:16px 32px;
+      display:flex;align-items:center;justify-content:space-between;}
+  nav .brand{color:#6366f1;font-size:20px;font-weight:700;}
+  nav .user{display:flex;align-items:center;gap:12px;}
+  nav .user span{color:#94a3b8;font-size:14px;}
+  .logout-btn{padding:7px 14px;background:transparent;border:1px solid #334155;
+               color:#94a3b8;border-radius:6px;cursor:pointer;font-size:13px;}
+  .logout-btn:hover{border-color:#6366f1;color:#6366f1;}
+  .container{max-width:1100px;margin:0 auto;padding:32px 20px;}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;}
+  .card{background:#1e293b;border:1px solid #334155;border-radius:12px;padding:24px;}
+  .card h2{font-size:17px;font-weight:600;color:#e2e8f0;margin-bottom:20px;
+            padding-bottom:12px;border-bottom:1px solid #334155;}
+  label{display:block;color:#94a3b8;font-size:13px;margin-bottom:5px;margin-top:14px;}
+  input,select{width:100%;padding:10px 14px;background:#0f172a;border:1px solid #334155;
+               border-radius:7px;color:#f1f5f9;font-size:14px;outline:none;transition:.2s;}
+  input:focus,select:focus{border-color:#6366f1;}
+  select option{background:#1e293b;}
+  .predict-btn{width:100%;padding:12px;background:#6366f1;color:#fff;border:none;
+               border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;
+               margin-top:20px;transition:.2s;}
+  .predict-btn:hover{background:#4f46e5;}
+  .predict-btn:disabled{background:#334155;cursor:not-allowed;}
+  .results{display:none;}
+  .results.show{display:block;}
+  .result-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:4px;}
+  .result-card{background:#0f172a;border:1px solid #334155;border-radius:8px;padding:16px;}
+  .result-card .label{color:#64748b;font-size:12px;margin-bottom:4px;}
+  .result-card .value{font-size:22px;font-weight:700;}
+  .result-card.blue .value{color:#6366f1;}
+  .result-card.green .value{color:#22c55e;}
+  .result-card.amber .value{color:#f59e0b;}
+  .result-card.red .value{color:#ef4444;}
+  .badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600;}
+  .badge.high{background:#052e16;color:#22c55e;}
+  .badge.medium{background:#1c1917;color:#f59e0b;}
+  .badge.low{background:#450a0a;color:#f87171;}
+  .history-table{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px;}
+  .history-table th{text-align:left;color:#64748b;font-weight:500;padding:8px 10px;
+                    border-bottom:1px solid #334155;}
+  .history-table td{padding:8px 10px;border-bottom:1px solid #1e293b;color:#cbd5e1;}
+  .history-table tr:hover td{background:#1e293b;}
+  .loading{text-align:center;color:#64748b;padding:20px;}
+  .err{padding:12px;background:#450a0a;color:#fca5a5;border-radius:8px;
+       font-size:14px;margin-top:10px;display:none;}
+  .err.show{display:block;}
+  @media(max-width:700px){.grid{grid-template-columns:1fr;}.result-grid{grid-template-columns:1fr 1fr;}}
+</style>
+</head>
+<body>
+<nav>
+  <div class="brand">PricingAI</div>
+  <div class="user">
+    <span>Welcome, <strong id="uname">User</strong></span>
+    <button class="logout-btn" onclick="logout()">Logout</button>
+  </div>
+</nav>
+<div class="container">
+  <div class="grid">
+
+    <!-- Prediction Form -->
+    <div class="card">
+      <h2>Predict pricing & demand</h2>
+      <div id="err" class="err"></div>
+
+      <label>Category</label>
+      <select id="category">
+        <option>Electronics</option><option>Clothing</option>
+        <option>Food</option><option>Home</option><option>Sports</option>
+      </select>
+
+      <label>Base price ($)</label>
+      <input type="number" id="base_price" placeholder="e.g. 199.99" step="0.01">
+
+      <label>Selling price ($)</label>
+      <input type="number" id="selling_price" placeholder="e.g. 149.99" step="0.01">
+
+      <label>Cost price ($)</label>
+      <input type="number" id="cost_price" placeholder="e.g. 80.00" step="0.01">
+
+      <label>Competitor price ($)</label>
+      <input type="number" id="competitor_price" placeholder="e.g. 159.99" step="0.01">
+
+      <label>Stock level (units)</label>
+      <input type="number" id="stock_level" placeholder="e.g. 150" value="100">
+
+      <label>Discount %</label>
+      <input type="number" id="discount_pct" placeholder="e.g. 10" value="0" min="0" max="100">
+
+      <label>Customer rating (1–5)</label>
+      <input type="number" id="customer_rating" placeholder="e.g. 4.2" step="0.1" min="1" max="5" value="4.0">
+
+      <label>Reviews count</label>
+      <input type="number" id="reviews_count" placeholder="e.g. 500" value="100">
+
+      <label>Demand index (0.5–2.0)</label>
+      <input type="number" id="demand_index" placeholder="e.g. 1.2" step="0.1" min="0.5" max="2.0" value="1.0">
+
+      <label>Promo active?</label>
+      <select id="promo_active"><option value="0">No</option><option value="1">Yes</option></select>
+
+      <label>Weekend?</label>
+      <select id="is_weekend"><option value="0">No (weekday)</option><option value="1">Yes</option></select>
+
+      <label>Holiday season? (Nov–Jan)</label>
+      <select id="holiday_season"><option value="0">No</option><option value="1">Yes</option></select>
+
+      <button class="predict-btn" id="predictBtn" onclick="predict()">
+        Run Prediction
+      </button>
+    </div>
+
+    <!-- Results -->
+    <div>
+      <div class="card">
+        <h2>Prediction results</h2>
+        <div id="results-placeholder" class="loading">
+          Fill the form and click "Run Prediction"
+        </div>
+        <div id="results" class="results">
+          <div class="result-grid">
+            <div class="result-card blue">
+              <div class="label">Predicted units sold</div>
+              <div class="value" id="r-units">—</div>
+            </div>
+            <div class="result-card green">
+              <div class="label">Predicted revenue</div>
+              <div class="value" id="r-revenue">—</div>
+            </div>
+            <div class="result-card amber">
+              <div class="label">Price tier</div>
+              <div class="value" id="r-tier">—</div>
+            </div>
+            <div class="result-card">
+              <div class="label">High demand</div>
+              <div class="value" id="r-demand">—</div>
+              <div style="font-size:12px;color:#64748b;margin-top:4px">
+                Probability: <span id="r-prob">—</span>
+              </div>
+            </div>
+          </div>
+          <div style="margin-top:16px;padding:14px;background:#0f172a;border-radius:8px;border:1px solid #334155;">
+            <div style="color:#64748b;font-size:12px;margin-bottom:6px;">Profit margin</div>
+            <div style="font-size:18px;font-weight:700;color:#a78bfa;" id="r-margin">—</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- History -->
+      <div class="card" style="margin-top:24px;">
+        <h2>Recent predictions</h2>
+        <div id="history-body"><div class="loading">Loading history...</div></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const token = localStorage.getItem("token");
+if (!token) window.location.href = "/login";
+document.getElementById("uname").textContent = localStorage.getItem("username") || "User";
+
+function logout() {
+  localStorage.clear();
+  window.location.href = "/login";
+}
+
+function authHeaders() {
+  return { "Content-Type":"application/json", "Authorization":"Bearer " + token };
+}
+
+async function predict() {
+  const err = document.getElementById("err");
+  const btn = document.getElementById("predictBtn");
+  err.className = "err";
+
+  const payload = {
+    category:         document.getElementById("category").value,
+    base_price:       parseFloat(document.getElementById("base_price").value),
+    selling_price:    parseFloat(document.getElementById("selling_price").value),
+    cost_price:       parseFloat(document.getElementById("cost_price").value),
+    competitor_price: parseFloat(document.getElementById("competitor_price").value),
+    stock_level:      parseInt(document.getElementById("stock_level").value),
+    discount_pct:     parseFloat(document.getElementById("discount_pct").value),
+    customer_rating:  parseFloat(document.getElementById("customer_rating").value),
+    reviews_count:    parseInt(document.getElementById("reviews_count").value),
+    demand_index:     parseFloat(document.getElementById("demand_index").value),
+    promo_active:     parseInt(document.getElementById("promo_active").value),
+    is_weekend:       parseInt(document.getElementById("is_weekend").value),
+    holiday_season:   parseInt(document.getElementById("holiday_season").value),
+  };
+
+  if (isNaN(payload.base_price) || isNaN(payload.selling_price)) {
+    err.textContent = "Please enter base price and selling price.";
+    err.className = "err show"; return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = "Running...";
+
+  try {
+    const res  = await fetch("/api/predict", {
+      method:"POST", headers: authHeaders(), body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      err.textContent = data.error || "Prediction failed.";
+      err.className = "err show";
+    } else {
+      showResults(data);
+      loadHistory();
+    }
+  } catch {
+    err.textContent = "Cannot connect to server.";
+    err.className = "err show";
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Run Prediction";
+  }
+}
+
+function showResults(d) {
+  document.getElementById("results-placeholder").style.display = "none";
+  const el = document.getElementById("results");
+  el.classList.add("show");
+  document.getElementById("r-units").textContent   = d.units_sold + " units";
+  document.getElementById("r-revenue").textContent = "$" + d.revenue.toLocaleString();
+  document.getElementById("r-tier").textContent    = d.price_tier;
+  document.getElementById("r-demand").textContent  = d.high_demand ? "Yes" : "No";
+  document.getElementById("r-prob").textContent    = (d.demand_prob * 100).toFixed(1) + "%";
+  document.getElementById("r-margin").textContent  = d.margin_ratio + "%";
+
+  const tierEl = document.getElementById("r-tier");
+  tierEl.innerHTML = `<span class="badge ${d.price_tier.toLowerCase()}">${d.price_tier}</span>`;
+  const demandCard = document.getElementById("r-demand").parentElement;
+  demandCard.className = "result-card " + (d.high_demand ? "green" : "red");
+}
+
+async function loadHistory() {
+  try {
+    const res  = await fetch("/api/history", { headers: authHeaders() });
+    const data = await res.json();
+    const el   = document.getElementById("history-body");
+    if (!data.length) {
+      el.innerHTML = '<div class="loading">No predictions yet.</div>'; return;
+    }
+    el.innerHTML = `
+      <table class="history-table">
+        <thead><tr>
+          <th>Category</th><th>Sell price</th><th>Units</th>
+          <th>Revenue</th><th>Tier</th><th>Demand</th>
+        </tr></thead>
+        <tbody>${data.map(r => `
+          <tr>
+            <td>${r.category}</td>
+            <td>$${r.selling_price}</td>
+            <td>${r.pred_units}</td>
+            <td>$${r.pred_revenue?.toLocaleString()}</td>
+            <td><span class="badge ${r.pred_tier?.toLowerCase()}">${r.pred_tier}</span></td>
+            <td style="color:${r.pred_high_demand?'#22c55e':'#ef4444'}">${r.pred_high_demand?'High':'Low'}</td>
+          </tr>`).join("")}
+        </tbody>
+      </table>`;
+  } catch { }
+}
+
+loadHistory();
+</script>
+</body>
+</html>
